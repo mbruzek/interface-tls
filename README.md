@@ -1,8 +1,8 @@
 # TLS interface
 
 This is a [Juju](https://jujucharms.com) interface layer that handles the
-transport layer security (TLS) between charms of the same type (a.k.a. peers
-relation).  Meaning the charms that use this layer can communicate securely
+transport layer security (TLS) for charms. Using relations between charms.  
+Meaning the charms that use this layer can communicate securely
 with each other based on TLS certificates.
 
 To get started please read the
