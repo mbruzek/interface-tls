@@ -1,7 +1,10 @@
+import os
+import sys
+
 from charmhelpers.core import hookenv
 from charms.reactive import hook
 from charms.reactive import scopes
-
+sys.path.append(os.path.dirname(__file__))
 from tlsbase import TlsRelation
 
 
@@ -14,9 +17,7 @@ class TlsProvides(TlsRelation):
         '''When a unit joins create a certificate signing request state.'''
         # Get the conversation scoped to the unit name.
         conversation = self.conversation()
-        # Set the request state for the layer to handle the logic.
-        conversation.set_state('create certificate signing request')
-        conversation.set_state('send certificate authority')
+        conversation.set_state('{relation_name}.send.ca')
 
     @hook('{provides:tls}-relation-changed')
     def changed(self):
@@ -25,4 +26,4 @@ class TlsProvides(TlsRelation):
         conversation = self.conversation()
         if hookenv.is_leader():
             if conversation.get_remote('csr'):
-                conversation.set_state('sign certificate signing request')
+                conversation.set_state('{relation_name}.sign.csr')
