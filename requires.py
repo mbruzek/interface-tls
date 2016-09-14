@@ -1,33 +1,66 @@
+import json
 import os
 import sys
 
-from charmhelpers.core import hookenv
 from charms.reactive import hook
 from charms.reactive import scopes
-sys.path.append(os.path.dirname(__file__))
-from tlsbase import TlsRelation
+from charms.reactive import RelationBase
 
-
-class TlsRequires(TlsRelation):
+class TlsRequires(RelationBase):
     '''The class that requires a TLS relationship to another unit.'''
-    scope = scopes.UNIT
+    # Use the gloabal scope for reqiu
+    scope = scopes.GLOBAL
 
-    @hook('{peers:tls}-relation-joined')
+    @hook('{requires:tls}-relation-joined')
     def joined(self):
-        '''When peers join set the create certificate signing request state.'''
+        '''When joining with a TLS provider request a certificate..'''
         # Get the conversation scoped to the unit.
         conversation = self.conversation()
-        # Set the start state here for the layers to handle the logic.
-        conversation.set_state('{relation_name}.create.csr')
+        conversation.set_state('{relation_name}.available')
 
-    @hook('{peers:tls}-relation-changed')
+
+    @hook('{requires:tls}-relation-changed')
     def changed(self):
         '''Only the leader should change the state to sign the request. '''
         # Get the conversation scoped to the unit name.
         conversation = self.conversation()
-        key = 'ca'
-        if conversation.get_remote(key):
-            conversation.set_state('{relation_name}.store.ca')
-        key = '{0}_signed_certificate'.format(hookenv.local_unit())
-        if conv.get_remote(key):
-            conv.set_state('{relation_name}.signed')
+        if conversation.get_remote('ca'):
+            conversation.set_state('{relation_name}.ca.available')
+        if conversation.get_remote('server.cert'):
+            conversation.set_state('{relation_name}.server.cert.available')
+        if conversation.get_remote('client.cert'):
+            conversation.set_state('{relation_name}.client.cert.available')
+
+    @hook('{provides:tls}-relation-{broken,departed}')
+    def broken_or_departed(self):
+        '''Remove the states that were set.'''
+        conversation = self.conversation()
+        conversation.remove_state('{relation_name}.available')
+
+    def get_ca(self):
+        '''Return the certificate authority.'''
+        # Get the conversation global scope.
+        conversation = self.conversation()
+        # Find the certificate authority by key, and return the value.
+        return conversation.get_remote('ca')
+
+    def get_client_cert(self):
+        '''Return the client certificate.'''
+        conversation = self.conversation()
+        client_cert = conversation.get_remote('client.cert')
+        client_key = conversation.get_remote('client.key')
+        return client_cert, client_key
+
+    def get_server_cert(self):
+        '''Return the server certificate.'''
+        conversation = self.conversation()
+        server_cert = conversation.get_remote('server.cert')
+        server_key = conversation.get_remote('server.key')
+        return server_cert, server_key
+    
+    def request_server_cert(self, cn, sans, cert_name):
+        '''Set values on the conversation to request a server certificate.'''
+        conversation = self.conversation()
+        conversation.set_remote('common_name', cn)
+        conversation.set_remote('sans', json.dumps(sans))
+        conversation.set_remote('certificate_name', cert_name)
